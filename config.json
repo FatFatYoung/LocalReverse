@@ -1,0 +1,5 @@
+{
+  "rules": [],
+  "secret_header": "X-Local-Proxy",
+  "secret_value": "MyFatYoungSSSagent"
+}
