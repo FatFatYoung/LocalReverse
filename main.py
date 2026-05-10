@@ -28,9 +28,7 @@ except ImportError:
 # 配置文件
 CONFIG_FILE = 'config.json'
 DEFAULT_CONFIG = {
-    'rules': [],
-    'secret_header': 'X-Local-Proxy',
-    'secret_value': 'MyFatYoungSSSagent'
+    'rules': []
 }
 
 
@@ -44,10 +42,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         
         target = f"{self.server.target_url}{self.path}"
         try:
-            headers = {
-                self.server.secret_header: self.server.secret_value
-            }
-            resp = requests.get(target, headers=headers, allow_redirects=False, timeout=30)
+            resp = requests.get(target, allow_redirects=False, timeout=30)
             
             self.send_response(resp.status_code)
             
@@ -91,11 +86,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
 
 class ProxyServer:
-    def __init__(self, local_port, target_url, secret_header, secret_value, log_callback):
+    def __init__(self, local_port, target_url, log_callback):
         self.local_port = local_port
         self.target_url = target_url
-        self.secret_header = secret_header
-        self.secret_value = secret_value
         self.log_callback = log_callback
         self.server = None
         self.thread = None
@@ -107,8 +100,6 @@ class ProxyServer:
             self.server = HTTPServer(('127.0.0.1', self.local_port), ProxyHandler)
             self.server.local_port = self.local_port
             self.server.target_url = self.target_url
-            self.server.secret_header = self.secret_header
-            self.server.secret_value = self.secret_value
             self.server.log_callback = self.log_callback
             self.server.timeout = 0.5
             self.running = True
@@ -496,8 +487,6 @@ class ProxyGUI:
                 server = ProxyServer(
                     local_port=port,
                     target_url=url,
-                    secret_header=self.config.get('secret_header', 'X-Local-Proxy'),
-                    secret_value=self.config.get('secret_value', 'MyFatYoungSSSagent'),
                     log_callback=self.log_callback
                 )
                 
