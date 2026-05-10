@@ -41,7 +41,7 @@ echo.
 echo [4/4] Copying config template to dist...
 if exist dist\ (
     if not exist "dist\config.json" (
-        echo {"rules": [], "secret_header": "X-Local-Reverse", "secret_value": "FatYoungReverse"} > "dist\config.json"
+        echo {"rules": []} > "dist\config.json"
         echo [OK] Created config.json in dist
     ) else (
         echo [OK] Config already exists in dist
