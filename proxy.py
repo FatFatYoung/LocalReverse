@@ -14,7 +14,6 @@ import ctypes
 # 全局变量
 TARGET_URL = ''
 PORT = 0
-SECRET_HEADER = {'X-Local-Proxy': 'MyFatYoungSSSagent'}
 
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -23,10 +22,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # 1. 构建目标 URL
         target = f"{TARGET_URL}{self.path}"
         try:
-            # 2. 带着暗号头转发请求
-            resp = requests.get(target, headers=SECRET_HEADER, allow_redirects=False, timeout=30)
             
-            # 3. 将服务器的响应返回给浏览器
+            # 2. 将服务器的响应返回给浏览器
             self.send_response(resp.status_code)
             for name, value in resp.headers.items():
                 if name.lower() not in ['content-encoding', 'transfer-encoding', 'content-length']:
