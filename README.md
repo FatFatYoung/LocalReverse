@@ -93,7 +93,7 @@ For third-party open-source component notices, see [THIRD_PARTY_NOTICES.md](THIR
 
 ## 📋 Changelog
 
-### [1.0.1.0] - 2026-11-21
+### [1.1.0] - 2026-11-21
 
 #### ✨ Features
 - **Listen mode switch**: GUI toggle / `listen_mode` config field switches between local (`127.0.0.1`) and LAN (`0.0.0.0`) listening; running proxies rebind immediately.
