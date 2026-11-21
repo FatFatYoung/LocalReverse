@@ -8,11 +8,45 @@ import tkinter as tk
 from tkinter import scrolledtext, messagebox, ttk
 import threading
 import requests
+import socket
 import sys
 import os
 import json
 from datetime import datetime
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+
+
+class TrackedHTTPServer(ThreadingHTTPServer):
+    """带连接跟踪的 ThreadingHTTPServer，stop 时可强杀在途/keep-alive 连接"""
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self._conns = set()
+        self._conns_lock = threading.Lock()
+
+    def track_conn(self, conn):
+        with self._conns_lock:
+            self._conns.add(conn)
+
+    def untrack_conn(self, conn):
+        with self._conns_lock:
+            self._conns.discard(conn)
+
+    def close_all_conns(self):
+        with self._conns_lock:
+            conns = list(self._conns)
+            self._conns.clear()
+        for c in conns:
+            try:
+                c.shutdown(socket.SHUT_RDWR)
+            except Exception:
+                pass
+            try:
+                c.close()
+            except Exception:
+                pass
 
 # 导入国际化模块
 try:
@@ -93,6 +127,20 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if hasattr(self.server, 'log_callback'):
                 self.server.log_callback(f"[{datetime.now().strftime('%H:%M:%S')}] [{self.server.local_port}] [错误] {method} {self.path} - {type(e).__name__}: {e}")
 
+    def setup(self):
+        super().setup()
+        try:
+            self.server.track_conn(self.connection)
+        except Exception:
+            pass
+
+    def finish(self):
+        try:
+            self.server.untrack_conn(self.connection)
+        except Exception:
+            pass
+        super().finish()
+
     def do_GET(self):
         self._proxy('GET', True)
 
@@ -125,10 +173,11 @@ class ProxyServer:
         self.thread = None
         self.running = False
         self.stop_event = threading.Event()
+        self._loop_entered = threading.Event()
     
     def start(self):
         try:
-            self.server = ThreadingHTTPServer((self.bind_host, self.local_port), ProxyHandler)
+            self.server = TrackedHTTPServer((self.bind_host, self.local_port), ProxyHandler)
             self.server.local_port = self.local_port
             self.server.target_url = self.target_url
             self.server.log_callback = self.log_callback
@@ -161,22 +210,35 @@ class ProxyServer:
                 return False, f"端口 {self.local_port} 启动失败：{str(e)}"
     
     def _serve_forever(self):
-        while self.running and not self.stop_event.is_set():
-            try:
-                self.server.handle_request()
-            except:
-                pass
+        # serve_forever 的 poll_interval 保证 accept 永不阻塞超过 0.5s，
+        # stop() 可确定性收线程——杜绝 Winsock 阻塞 accept 的僵尸监听
+        self._loop_entered.set()
+        try:
+            self.server.serve_forever(poll_interval=0.5)
+        except Exception:
+            pass
+        finally:
+            self.running = False
     
     def stop(self):
         if self.server:
             self.running = False
             self.stop_event.set()
             try:
-                self.server.server_close()
-            except:
+                if self._loop_entered.is_set():
+                    self.server.shutdown()      # 结束 serve_forever 循环（<=0.5s）
+            except Exception:
+                pass
+            try:
+                self.server.server_close()      # 关闭监听 socket
+            except Exception:
                 pass
             if self.thread and self.thread.is_alive():
-                self.thread.join(timeout=2.0)
+                self.thread.join(timeout=3.0)
+            try:
+                self.server.close_all_conns()   # 强杀在途/keep-alive 连接
+            except Exception:
+                pass
             self.server = None
             self.thread = None
             return f"端口 {self.local_port} 已停止"
