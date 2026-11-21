@@ -2,6 +2,9 @@
 
 ## [1.0.1.0] - 2026-11-21
 
+### ✨ Features
+- **Listen mode switch**: GUI toggle / `listen_mode` config field switches between local (`127.0.0.1`) and LAN (`0.0.0.0`) listening; running proxies rebind immediately.
+
 ### 🔒 Security & Robustness
 - **Threading server**: switched to `ThreadingHTTPServer`; concurrent requests no longer block each other and slow clients can no longer stall the service.
 - **Request header forwarding**: browser headers (Cookie, User-Agent, Authorization, etc.) are now forwarded to the target (hop-by-hop headers stripped).

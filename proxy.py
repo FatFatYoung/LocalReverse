@@ -14,6 +14,7 @@ import ctypes
 # 全局变量
 TARGET_URL = ''
 PORT = 0
+BIND_HOST = '127.0.0.1'
 
 class ProxyHandler(BaseHTTPRequestHandler):
     # 逐跳头和 Host 不转发；Accept-Encoding 交给 requests 接管（自动解压）
@@ -97,7 +98,7 @@ def is_admin():
         return False
 
 def main():
-    global TARGET_URL, PORT
+    global TARGET_URL, PORT, BIND_HOST
 
     print("=" * 60)
     print("本地代理服务器 - 通用版")
@@ -125,10 +126,18 @@ def main():
         except ValueError:
             print("[错误] 端口必须是纯数字")
 
+    while True:
+        input_mode = input("监听模式（1=本地 127.0.0.1，2=局域网 0.0.0.0，直接回车=1）: ").strip()
+        if input_mode in ('', '1', '2'):
+            BIND_HOST = '0.0.0.0' if input_mode == '2' else '127.0.0.1'
+            break
+        else:
+            print("[错误] 请输入 1 或 2（直接回车默认本地模式）")
+
     print()
     print("-" * 40)
     print(f"目标网站：{TARGET_URL}")
-    print(f"监听地址：http://127.0.0.1:{PORT}")
+    print(f"监听地址：http://{BIND_HOST}:{PORT}")
     
     # 2. 权限检查（仅针对低端口号）
     if PORT < 1024:
@@ -147,7 +156,7 @@ def main():
 
     # 3. 启动服务器
     try:
-        server = ThreadingHTTPServer(('127.0.0.1', PORT), ProxyHandler)
+        server = ThreadingHTTPServer((BIND_HOST, PORT), ProxyHandler)
         print(f"[OK] 服务启动成功，正在监听 {PORT} 端口...")
         server.serve_forever()
     except OSError as e:

@@ -28,6 +28,7 @@ except ImportError:
 # 配置文件
 CONFIG_FILE = 'config.json'
 DEFAULT_CONFIG = {
+    'listen_mode': 'local',
     'rules': []
 }
 
@@ -115,9 +116,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
 
 class ProxyServer:
-    def __init__(self, local_port, target_url, log_callback):
+    def __init__(self, local_port, target_url, log_callback, bind_host='127.0.0.1'):
         self.local_port = local_port
         self.target_url = target_url
+        self.bind_host = bind_host
         self.log_callback = log_callback
         self.server = None
         self.thread = None
@@ -126,7 +128,7 @@ class ProxyServer:
     
     def start(self):
         try:
-            self.server = ThreadingHTTPServer(('127.0.0.1', self.local_port), ProxyHandler)
+            self.server = ThreadingHTTPServer((self.bind_host, self.local_port), ProxyHandler)
             self.server.local_port = self.local_port
             self.server.target_url = self.target_url
             self.server.log_callback = self.log_callback
@@ -297,6 +299,10 @@ class ProxyGUI:
         
         self.save_btn = tk.Button(btn_frame, text=i18n.t('btn_save'), font=("Microsoft YaHei", 9), width=8, command=self.save_and_refresh)
         self.save_btn.pack(side=tk.LEFT, padx=2)
+        
+        self.lan_var = tk.BooleanVar(value=self.config.get('listen_mode', 'local') == 'lan')
+        self.lan_chk = tk.Checkbutton(btn_frame, text=i18n.t('chk_lan'), variable=self.lan_var, command=self.on_lan_toggle, font=("Microsoft YaHei", 9))
+        self.lan_chk.pack(side=tk.LEFT, padx=(12, 2))
         
         # 分隔线
         sep2 = tk.Frame(main_frame, height=2, bg="#ddd")
@@ -476,7 +482,7 @@ class ProxyGUI:
                     self.log(i18n.t('log_rule_hotupdated', port=port_int, url=url), "success")
                 else:
                     srv.stop()
-                    new_srv = ProxyServer(port_int, url, self.log_callback)
+                    new_srv = ProxyServer(port_int, url, self.log_callback, bind_host=self._bind_host())
                     ok, _msg = new_srv.start()
                     if ok:
                         self.proxy_servers[port_int] = new_srv
@@ -508,6 +514,29 @@ class ProxyGUI:
             self.refresh_rules()
             self.log(i18n.t('log_config_saved'), "success")
     
+    def _bind_host(self):
+        return '0.0.0.0' if self.config.get('listen_mode', 'local') == 'lan' else '127.0.0.1'
+    
+    def on_lan_toggle(self):
+        mode = 'lan' if self.lan_var.get() else 'local'
+        self.config['listen_mode'] = mode
+        self.save_config()
+        if mode == 'lan':
+            self.log(i18n.t('log_mode_lan'), "warning")
+        else:
+            self.log(i18n.t('log_mode_local'), "info")
+        if self.proxy_servers:
+            bind = self._bind_host()
+            for port in list(self.proxy_servers.keys()):
+                srv = self.proxy_servers.pop(port)
+                srv.stop()
+                new_srv = ProxyServer(port, srv.target_url, self.log_callback, bind_host=bind)
+                ok, msg = new_srv.start()
+                if ok:
+                    self.proxy_servers[port] = new_srv
+                else:
+                    self.log(msg, "error")
+    
     def toggle_connection(self):
         if self.is_running:
             self.stop_all()
@@ -537,7 +566,8 @@ class ProxyGUI:
                 server = ProxyServer(
                     local_port=port,
                     target_url=url,
-                    log_callback=self.log_callback
+                    log_callback=self.log_callback,
+                    bind_host=self._bind_host()
                 )
                 
                 success, message = server.start()
