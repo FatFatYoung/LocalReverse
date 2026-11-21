@@ -144,6 +144,11 @@ class ProxyServer:
             time.sleep(0.2)
             
             if self.running:
+                try:
+                    a = self.server.socket.getsockname()
+                    self.log_callback(i18n.t('log_bound', addr=f"{a[0]}:{a[1]}"))
+                except Exception:
+                    pass
                 return True, f"端口 {self.local_port} -> {self.target_url} 启动成功"
             else:
                 return False, f"端口 {self.local_port} 启动失败"
@@ -531,29 +536,41 @@ class ProxyGUI:
         return '0.0.0.0' if self.config.get('listen_mode', 'local') == 'lan' else '127.0.0.1'
     
     def on_lan_toggle(self):
-        mode = 'lan' if self.lan_var.get() else 'local'
-        self.config['listen_mode'] = mode
-        self.save_config()
-        if mode == 'lan':
-            self.log(i18n.t('log_mode_lan'), "warning")
-        else:
-            self.log(i18n.t('log_mode_local'), "info")
-        if self.proxy_servers:
-            bind = self._bind_host()
-            rules_by_port = {r['local_port']: r for r in self.config.get('rules', [])}
-            for port in list(self.proxy_servers.keys()):
-                srv = self.proxy_servers.pop(port)
-                srv.stop()
-                rule = rules_by_port.get(port)
-                if not rule or not rule.get('enabled', True):
-                    self.log(i18n.t('log_stopped', port=port), "warning")
-                    continue
-                new_srv = ProxyServer(port, rule['target_url'], self.log_callback, bind_host=bind)
-                ok, msg = new_srv.start()
-                if ok:
-                    self.proxy_servers[port] = new_srv
-                else:
-                    self.log(msg, "error")
+        try:
+            mode = 'lan' if self.lan_var.get() else 'local'
+            self.config['listen_mode'] = mode
+            self.save_config()
+            if mode == 'lan':
+                self.log(i18n.t('log_mode_lan'), "warning")
+            else:
+                self.log(i18n.t('log_mode_local'), "info")
+            if self.proxy_servers:
+                bind = self._bind_host()
+                rules_by_port = {str(r.get('local_port')): r for r in self.config.get('rules', [])}
+                for port in list(self.proxy_servers.keys()):
+                    try:
+                        srv = self.proxy_servers.pop(port)
+                        srv.stop()
+                        rule = rules_by_port.get(str(port))
+                        if not rule or not rule.get('enabled', True):
+                            self.log(i18n.t('log_stopped', port=port), "warning")
+                            continue
+                        url = rule.get('target_url')
+                        if not url:
+                            self.log(f"[错误] 端口 {port} 规则缺少 target_url，保持停止", "error")
+                            continue
+                        new_srv = ProxyServer(port, url, self.log_callback, bind_host=bind)
+                        ok, msg = new_srv.start()
+                        if ok:
+                            self.proxy_servers[port] = new_srv
+                        else:
+                            self.log(msg, "error")
+                    except Exception as e:
+                        self.log(f"[错误] 端口 {port} 模式切换失败: {e}", "error")
+        except Exception as e:
+            import traceback
+            self.log("[错误] 监听模式切换失败: " + traceback.format_exc(limit=2), "error")
+            messagebox.showerror(i18n.t('window_title'), str(e))
     
     def toggle_connection(self):
         if self.is_running:

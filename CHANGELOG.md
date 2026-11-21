@@ -15,6 +15,7 @@
 - **Response `Content-Length`**: sent with the correct value instead of being stripped.
 - **HEAD**: responses no longer carry a body.
 - **Rule changes take effect immediately**: editing a rule hot-updates the running proxy target (no restart); a port change migrates & rebuilds the proxy; deleting a rule stops its proxy.
+- **Mode switch cannot fail partially or silently**: malformed rules (missing `target_url`, numeric/string port mismatch) are skipped with an error log instead of aborting the switch mid-way; every proxy start logs its actual bound address so the active listen mode is visible in the GUI log.
 
 ## [1.0.0] - 2026-05-10
 
