@@ -58,7 +58,7 @@ echo Executable: dist\LocalReverse.exe
 echo.
 echo Usage:
 echo 1. Double-click LocalReverse.exe
-echo 2. Add mapping rules (local port -> target URL)
+echo 2. Add mapping rules (local port -^> target URL)
 echo 3. Click Start All Services
 echo.
 
