@@ -57,12 +57,18 @@ python main.py
 
 ```text
 LocalReverse/
-├── main.py           # Core GUI application
-├── i18n.py           # Internationalization module
-├── proxy.py          # Generic command-line version (optional)
-├── demo.py           # Port 80 quick demo (optional)
-├── build.bat         # Build script (Windows)
-└── config.json       # Configuration file
+├── main.py                  # Core GUI application
+├── i18n.py                  # Internationalization module
+├── proxy.py                 # Generic command-line version (optional)
+├── demo.py                  # Port 80 quick demo (optional)
+├── build.bat                # Build script (Windows)
+├── config.json              # Configuration file (build dependency)
+├── file_version_info.txt    # EXE version metadata (used by build.bat)
+├── LICENSE                  # MIT license
+├── README.md                # Documentation (incl. changelog)
+├── THIRD_PARTY_NOTICES.md   # Third-party license notices
+├── .gitignore               # Git ignore rules
+└── dist/                    # Build output (LocalReverse.exe, not committed)
 ```
 
 ## ⚙️ Advanced: Command-Line Versions
