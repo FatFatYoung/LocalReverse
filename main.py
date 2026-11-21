@@ -459,6 +459,7 @@ class ProxyGUI:
                     messagebox.showerror(i18n.t('err_start_all'), i18n.t('err_port_used', port=port_int))
                     return
             
+            old_port = rule['local_port']
             self.config['rules'][idx] = {
                 'local_port': port_int,
                 'target_url': url,
@@ -466,6 +467,22 @@ class ProxyGUI:
             }
             self.save_config()
             self.refresh_rules()
+            if old_port in self.proxy_servers:
+                srv = self.proxy_servers.pop(old_port)
+                if port_int == old_port and srv.server is not None:
+                    srv.target_url = url
+                    srv.server.target_url = url
+                    self.proxy_servers[port_int] = srv
+                    self.log(i18n.t('log_rule_hotupdated', port=port_int, url=url), "success")
+                else:
+                    srv.stop()
+                    new_srv = ProxyServer(port_int, url, self.log_callback)
+                    ok, _msg = new_srv.start()
+                    if ok:
+                        self.proxy_servers[port_int] = new_srv
+                        self.log(i18n.t('log_rule_migrated', old_port=old_port, port=port_int, url=url), "success")
+                    else:
+                        self.log(_msg, "error")
             self.log(i18n.t('log_rule_edited', port=port_int, url=url), "success")
     
     def delete_rule(self):
@@ -477,10 +494,14 @@ class ProxyGUI:
         if messagebox.askyesno(i18n.t('confirm_delete'), i18n.t('confirm_delete')):
             idx = int(selected[0])
             rule = self.config['rules'][idx]
+            port = rule['local_port']
+            if port in self.proxy_servers:
+                self.proxy_servers.pop(port).stop()
+                self.log(i18n.t('log_stopped', port=port), "warning")
             self.config['rules'].pop(idx)
             self.save_config()
             self.refresh_rules()
-            self.log(i18n.t('log_rule_deleted', port=rule['local_port']), "warning")
+            self.log(i18n.t('log_rule_deleted', port=port), "warning")
     
     def save_and_refresh(self):
         if self.save_config():

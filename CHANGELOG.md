@@ -11,6 +11,7 @@
 - **Request body forwarding**: POST/PUT/PATCH/DELETE bodies are now read and forwarded instead of being silently dropped.
 - **Response `Content-Length`**: sent with the correct value instead of being stripped.
 - **HEAD**: responses no longer carry a body.
+- **Rule changes take effect immediately**: editing a rule hot-updates the running proxy target (no restart); a port change migrates & rebuilds the proxy; deleting a rule stops its proxy.
 
 ## [1.0.0] - 2026-05-10
 
