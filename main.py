@@ -382,6 +382,19 @@ class ProxyGUI:
         self.refresh_rules()
         status = i18n.t('status_enabled') if rule['enabled'] else i18n.t('status_disabled')
         self.log(i18n.t('log_rule_toggled', port=rule['local_port'], status=status), "warning")
+        port = rule['local_port']
+        if not rule['enabled']:
+            if port in self.proxy_servers:
+                self.proxy_servers.pop(port).stop()
+                self.log(i18n.t('log_stopped', port=port), "warning")
+        elif self.is_running and port not in self.proxy_servers:
+            new_srv = ProxyServer(port, rule['target_url'], self.log_callback, bind_host=self._bind_host())
+            ok, msg = new_srv.start()
+            if ok:
+                self.proxy_servers[port] = new_srv
+                self.log(i18n.t('log_started', port=port, url=rule['target_url']), "success")
+            else:
+                self.log(msg, "error")
     
     def refresh_rules(self):
         for item in self.tree.get_children():
@@ -527,10 +540,15 @@ class ProxyGUI:
             self.log(i18n.t('log_mode_local'), "info")
         if self.proxy_servers:
             bind = self._bind_host()
+            rules_by_port = {r['local_port']: r for r in self.config.get('rules', [])}
             for port in list(self.proxy_servers.keys()):
                 srv = self.proxy_servers.pop(port)
                 srv.stop()
-                new_srv = ProxyServer(port, srv.target_url, self.log_callback, bind_host=bind)
+                rule = rules_by_port.get(port)
+                if not rule or not rule.get('enabled', True):
+                    self.log(i18n.t('log_stopped', port=port), "warning")
+                    continue
+                new_srv = ProxyServer(port, rule['target_url'], self.log_callback, bind_host=bind)
                 ok, msg = new_srv.start()
                 if ok:
                     self.proxy_servers[port] = new_srv
