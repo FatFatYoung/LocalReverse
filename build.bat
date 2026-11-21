@@ -19,9 +19,9 @@ echo.
 echo [3/4] Building...
 pyinstaller --onefile --windowed ^
     --name "LocalReverse" ^
-    --version-file file_version_info.txt ^
+    --version-file resources\file_version_info.txt ^
     --add-data "config.json;." ^
-    --add-data "i18n.py;." ^
+    --add-data "src\i18n.py;." ^
     --exclude-module matplotlib ^
     --exclude-module numpy ^
     --exclude-module pandas ^
@@ -35,7 +35,7 @@ pyinstaller --onefile --windowed ^
     --exclude-module flask ^
     --exclude-module django ^
     --exclude-module aiohttp ^
-    main.py
+    src\main.py
 echo [OK] Build complete
 echo.
 

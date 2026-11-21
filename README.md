@@ -36,7 +36,7 @@ LocalReverse works like a **traffic commander**: it quietly forwards requests se
 git clone https://github.com/FatFatYoung/LocalReverse.git
 cd LocalReverse
 pip install requests
-python main.py
+python src/main.py
 ```
 
 ## 🛠️ Usage Examples
@@ -57,18 +57,20 @@ python main.py
 
 ```text
 LocalReverse/
-├── main.py                  # Core GUI application
-├── i18n.py                  # Internationalization module
-├── proxy.py                 # Generic command-line version (optional)
-├── demo.py                  # Port 80 quick demo (optional)
-├── build.bat                # Build script (Windows)
-├── config.json              # Configuration file (build dependency)
-├── file_version_info.txt    # EXE version metadata (used by build.bat)
-├── LICENSE                  # MIT license
-├── README.md                # Documentation (incl. changelog)
-├── THIRD_PARTY_NOTICES.md   # Third-party license notices
-├── .gitignore               # Git ignore rules
-└── dist/                    # Build output (LocalReverse.exe, not committed)
+├── src/                        # Source code
+│   ├── main.py                 # Core GUI application
+│   ├── i18n.py                 # Internationalization module
+│   ├── proxy.py                # Generic command-line version (optional)
+│   └── demo.py                 # Port 80 quick demo (optional)
+├── resources/                  # Build resources
+│   └── file_version_info.txt   # EXE version metadata (used by build.bat)
+├── dist/                       # Build output (LocalReverse.exe, not committed)
+├── build.bat                   # Build script (Windows)
+├── config.json                 # Configuration file (build dependency)
+├── README.md                   # Documentation (incl. changelog)
+├── THIRD_PARTY_NOTICES.md      # Third-party license notices
+├── LICENSE                     # MIT license
+└── .gitignore                  # Git ignore rules
 ```
 
 ## ⚙️ Advanced: Command-Line Versions
@@ -95,6 +97,9 @@ For third-party open-source component notices, see [THIRD_PARTY_NOTICES.md](THIR
 
 #### ✨ Features
 - **Listen mode switch**: GUI toggle / `listen_mode` config field switches between local (`127.0.0.1`) and LAN (`0.0.0.0`) listening; running proxies rebind immediately.
+
+#### 🔧 Improvements
+- **Repository layout tidied**: sources live under `src/`, build resources under `resources/`; the project root keeps only standard entry files. Run from source with `python src/main.py`.
 
 #### 🔒 Security & Robustness
 - **Threading server**: switched to `ThreadingHTTPServer`; concurrent requests no longer block each other and slow clients can no longer stall the service.
