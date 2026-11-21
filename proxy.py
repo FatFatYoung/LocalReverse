@@ -23,7 +23,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         target = f"{TARGET_URL}{self.path}"
         try:
             
-            # 2. 将服务器的响应返回给浏览器
+            # 2. 转发请求到目标网站
+            resp = requests.get(target, allow_redirects=False, timeout=30)
+            # 3. 将服务器的响应返回给浏览器
             self.send_response(resp.status_code)
             for name, value in resp.headers.items():
                 if name.lower() not in ['content-encoding', 'transfer-encoding', 'content-length']:

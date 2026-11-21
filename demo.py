@@ -13,7 +13,6 @@ import ctypes
 # --- 核心配置 ---
 TARGET_URL = 'https://github.com/FatFatYoung'
 LISTEN_PORT = 80
-SECRET_HEADER = {'': 'DemoMode'}
 # ----------------
 
 class ProxyHandler(BaseHTTPRequestHandler):
@@ -21,8 +20,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # 1. 构建目标 URL
         target = f"{TARGET_URL}{self.path}"
         try:
-            # 2. 带着暗号头转发请求
-            resp = requests.get(target, headers=SECRET_HEADER, allow_redirects=False, timeout=30)
+            # 2. 转发请求到目标网站
+            resp = requests.get(target, allow_redirects=False, timeout=30)
             
             # 3. 将服务器的响应返回给浏览器
             self.send_response(resp.status_code)

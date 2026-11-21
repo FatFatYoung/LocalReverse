@@ -7,7 +7,6 @@
 - **Multi-Rule Support**: Map multiple local ports to different target URLs simultaneously.
 - **i18n**: Support for Chinese and English.
 - **Dynamic Rules**: Add, edit, or disable rules without restarting the service.
-- **Security**: Support for custom secret headers to identify proxy requests.
 
 ### 📦 Included Tools
 - `main.py`: The main GUI application.
