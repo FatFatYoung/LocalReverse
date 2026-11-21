@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [1.0.1.0] - 2026-11-21
+
+### 🔒 Security & Robustness
+- **Threading server**: switched to `ThreadingHTTPServer`; concurrent requests no longer block each other and slow clients can no longer stall the service.
+- **Request header forwarding**: browser headers (Cookie, User-Agent, Authorization, etc.) are now forwarded to the target (hop-by-hop headers stripped).
+- **Error pages no longer expose exception details**; details go to the server-side log only.
+
+### 🐛 Fixes
+- **Request body forwarding**: POST/PUT/PATCH/DELETE bodies are now read and forwarded instead of being silently dropped.
+- **Response `Content-Length`**: sent with the correct value instead of being stripped.
+- **HEAD**: responses no longer carry a body.
+
 ## [1.0.0] - 2026-05-10
 
 ### ✨ Initial Release

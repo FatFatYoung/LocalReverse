@@ -19,6 +19,7 @@ echo.
 echo [3/4] Building...
 pyinstaller --onefile --windowed ^
     --name "LocalReverse" ^
+    --version-file file_version_info.txt ^
     --add-data "config.json;." ^
     --add-data "i18n.py;." ^
     --exclude-module matplotlib ^

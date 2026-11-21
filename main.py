@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-LocalReverse - 本地反向代理可视化管理工具 (V1.0)
+LocalReverse - 本地反向代理可视化管理工具 (V1.0.1)
 支持自定义映射规则（本地端口 -> 目标网址），支持多规则并行
 支持中英双语切换，移除系统托盘，纯窗口交互
 """
@@ -12,7 +12,7 @@ import sys
 import os
 import json
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 # 导入国际化模块
 try:
@@ -33,54 +33,83 @@ DEFAULT_CONFIG = {
 
 
 class ProxyHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    # 逐跳头和 Host 不转发；Accept-Encoding 交给 requests 接管（自动解压）
+    SKIP_HEADERS = {'host', 'connection', 'keep-alive', 'proxy-authenticate',
+                    'proxy-authorization', 'te', 'trailers', 'transfer-encoding',
+                    'upgrade', 'content-length', 'accept-encoding'}
+
+    def _proxy(self, method, include_body):
         # 忽略 favicon.ico 请求
         if self.path == '/favicon.ico':
             self.send_response(204)
             self.end_headers()
             return
-        
+
         target = f"{self.server.target_url}{self.path}"
         try:
-            resp = requests.get(target, allow_redirects=False, timeout=30)
-            
+            # 转发浏览器请求头和请求体到目标网站
+            fwd = {k: v for k, v in self.headers.items() if k.lower() not in self.SKIP_HEADERS}
+            length = int(self.headers.get('Content-Length') or 0)
+            body = self.rfile.read(length) if length > 0 else None
+            resp = requests.request(method, target, headers=fwd, data=body,
+                                    allow_redirects=False, timeout=30)
+
             self.send_response(resp.status_code)
-            
+
             # 禁用浏览器缓存
             self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             self.send_header('Pragma', 'no-cache')
             self.send_header('Expires', '0')
-            
+
             for name, value in resp.headers.items():
                 if name.lower() not in ['content-encoding', 'transfer-encoding', 'content-length', 'cache-control', 'pragma', 'expires']:
                     self.send_header(name, value)
-            self.end_headers()
-            self.wfile.write(resp.content)
-            
+            if include_body:
+                self.send_header('Content-Length', str(len(resp.content)))
+                self.end_headers()
+                self.wfile.write(resp.content)
+            else:
+                # HEAD：沿用上游声明的长度（HEAD 响应体恒为空，不能用 len(content)）
+                self.send_header('Content-Length', resp.headers.get('Content-Length') or '0')
+                self.end_headers()
+
             if hasattr(self.server, 'log_callback'):
-                self.server.log_callback(f"[{datetime.now().strftime('%H:%M:%S')}] [{self.server.local_port}] GET {self.path} -> {resp.status_code}")
+                self.server.log_callback(f"[{datetime.now().strftime('%H:%M:%S')}] [{self.server.local_port}] {method} {self.path} -> {resp.status_code}")
         except Exception as e:
             try:
-                self.send_response(500)
+                self.send_response(502)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.send_header('Cache-Control', 'no-store, no-cache')
                 self.send_header('Pragma', 'no-cache')
                 self.send_header('Expires', '0')
                 self.end_headers()
-                error_html = f"<html><body><h1>代理错误</h1><p>{str(e)}</p></body></html>".encode('utf-8')
+                error_html = f"<html><body><h1>代理错误</h1><p>无法连接目标网站，请检查目标网址或网络。</p><p>请求地址：{target}</p></body></html>".encode('utf-8')
                 self.wfile.write(error_html)
             except:
                 pass
-            
+
+            # 异常详情只进服务端日志，不回显给浏览器
             if hasattr(self.server, 'log_callback'):
-                self.server.log_callback(f"[{datetime.now().strftime('%H:%M:%S')}] [{self.server.local_port}] [错误] GET {self.path} - {str(e)}")
-    
+                self.server.log_callback(f"[{datetime.now().strftime('%H:%M:%S')}] [{self.server.local_port}] [错误] {method} {self.path} - {type(e).__name__}: {e}")
+
+    def do_GET(self):
+        self._proxy('GET', True)
+
     def do_POST(self):
-        self.do_GET()
-    
+        self._proxy('POST', True)
+
+    def do_PUT(self):
+        self._proxy('PUT', True)
+
+    def do_PATCH(self):
+        self._proxy('PATCH', True)
+
+    def do_DELETE(self):
+        self._proxy('DELETE', True)
+
     def do_HEAD(self):
-        self.do_GET()
-    
+        self._proxy('HEAD', False)
+
     def log_message(self, format, *args):
         pass
 
@@ -97,7 +126,7 @@ class ProxyServer:
     
     def start(self):
         try:
-            self.server = HTTPServer(('127.0.0.1', self.local_port), ProxyHandler)
+            self.server = ThreadingHTTPServer(('127.0.0.1', self.local_port), ProxyHandler)
             self.server.local_port = self.local_port
             self.server.target_url = self.target_url
             self.server.log_callback = self.log_callback
